@@ -16,7 +16,7 @@ A comprehensive guide to using Depth-Anything-3 for depth estimation, camera pos
 
 ---
 
-## 🚀 Installation
+## 🚀 <span id="installation">Installation</span>
 
 ### Prerequisites
 - Python 3.9 - 3.13
@@ -57,7 +57,7 @@ pip install -e ".[app]"
 
 ---
 
-## ⚡ Quick Start
+## ⚡ <span id="quick-start">Quick Start</span>
 
 ### Python API - Basic Usage
 
@@ -102,7 +102,7 @@ da3 auto path/to/input --export-dir ./output
 
 ---
 
-## 🐍 Python API
+## 🐍 <span id="python-api">Python API</span>
 
 ### Initialization
 
@@ -172,7 +172,7 @@ prediction.scale_factor       # float - Metric scale factor
 
 ---
 
-## 💻 Command-Line Interface (CLI)
+## 💻 <span id="command-line-interface-cli">Command-Line Interface (CLI)</span>
 
 ### Available Commands
 
@@ -273,9 +273,104 @@ Launch a gallery server to view results.
 da3 gallery --gallery-dir ./workspace
 ```
 
+### Use Case: Generate K-Matrix (Camera Intrinsics) from Image
+
+DA3 can automatically estimate camera intrinsics (K-matrix) from a single image using the CLI. This is useful when you need camera calibration parameters but don't have access to a calibration pattern.
+
+#### Method 1: Using `da3 image` with `mini_npz` Export
+
+```bash
+# Process a single image and export intrinsics
+da3 image path/to/image.jpg \
+    --export-dir ./output \
+    --export-format mini_npz
+
+# Extract K-matrix from the NPZ file
+python -c "
+import numpy as np
+data = np.load('./output/exports/mini_npz/results.npz')
+K = data['intrinsics'][0]  # Get first image's K-matrix
+np.savetxt('K.txt', K, fmt='%.6f')
+print('K-matrix saved to K.txt')
+print(f'K-matrix:\n{K}')
+"
+```
+
+#### Method 2: Using `da3 auto` for Multiple Images
+
+```bash
+# Process a directory of images
+da3 auto ./images/ \
+    --export-dir ./output \
+    --export-format mini_npz
+
+# Extract K-matrix for a specific image (e.g., first image)
+python -c "
+import numpy as np
+data = np.load('./output/exports/mini_npz/results.npz')
+K = data['intrinsics'][0]  # First image's K-matrix
+np.savetxt('K.txt', K, fmt='%.6f')
+print(f'K-matrix for first image:\n{K}')
+"
+```
+
+#### Method 3: Batch Extract K-Matrices for All Images
+
+```bash
+# Process images and export intrinsics
+da3 images ./dataset/ \
+    --export-dir ./output \
+    --export-format mini_npz
+
+# Extract K-matrices for all images
+python -c "
+import numpy as np
+import os
+
+data = np.load('./output/exports/mini_npz/results.npz')
+intrinsics = data['intrinsics']  # All K-matrices
+
+# Save each K-matrix
+os.makedirs('./K_matrices', exist_ok=True)
+for i, K in enumerate(intrinsics):
+    np.savetxt(f'./K_matrices/K_{i:04d}.txt', K, fmt='%.6f')
+    print(f'Saved K-matrix {i} to K_matrices/K_{i:04d}.txt')
+print(f'Total: {len(intrinsics)} K-matrices extracted')
+"
+```
+
+#### Understanding the K-Matrix Output
+
+The K-matrix is a 3×3 camera intrinsic matrix with the following format:
+
+```
+[[fx,  0, cx],
+ [0,  fy, cy],
+ [0,   0,  1]]
+```
+
+Where:
+- **fx, fy**: Focal lengths in pixels (X and Y directions)
+- **cx, cy**: Principal point coordinates (image center) in pixels
+
+#### Use Cases
+
+- **3D Reconstruction**: Use K-matrix with depth maps to generate accurate point clouds
+- **SLAM/Tracking**: Provide camera intrinsics for visual SLAM systems (e.g., pysrt3d, ORB-SLAM)
+- **Camera Calibration**: Estimate camera parameters when calibration patterns are unavailable
+- **Multi-View Stereo**: Use intrinsics for pose-conditioned depth estimation
+- **AR/VR Applications**: Provide camera parameters for augmented reality applications
+
+#### Tips
+
+- The estimated K-matrix is automatically computed by DA3 during inference
+- For best results, use images with good lighting and clear features
+- The K-matrix values are in pixels, so they depend on the image resolution
+- You can use the `--process-res` parameter to control the processing resolution
+
 ---
 
-## 🎯 Model Selection
+## 🎯 <span id="model-selection">Model Selection</span>
 
 ### Available Models
 
@@ -311,7 +406,7 @@ da3 gallery --gallery-dir ./workspace
 
 ---
 
-## ⚙️ Parameters Reference
+## ⚙️ <span id="parameters-reference">Parameters Reference</span>
 
 ### Input Parameters
 
@@ -448,7 +543,7 @@ da3 gallery --gallery-dir ./workspace
 
 ---
 
-## 📤 Export Formats
+## 📤 <span id="export-formats">Export Formats</span>
 
 ### `mini_npz`
 - **Description**: Minimal NPZ format with essential data
@@ -502,7 +597,7 @@ export_format = "mini_npz-glb-feat_vis"
 
 ---
 
-## 💡 Examples
+## 💡 <span id="examples">Examples</span>
 
 ### Example 1: Basic Depth Estimation
 
@@ -615,9 +710,114 @@ da3 colmap ./colmap_dataset \
     --export-format colmap-glb
 ```
 
+### Example 9: Generate K-Matrix (Camera Intrinsics) from Image
+
+DA3 can automatically estimate camera intrinsics (K-matrix) from a single image without requiring a calibration pattern.
+
+#### Method 1: Using Python API
+
+```python
+from depth_anything_3.api import DepthAnything3
+import torch
+import numpy as np
+
+# Initialize model
+model = DepthAnything3.from_pretrained("depth-anything/DA3-LARGE-1.1")
+model = model.to("cuda")
+
+# Process a single image
+prediction = model.inference(
+    image=["path/to/image.jpg"],
+    export_dir="./output",
+    export_format="mini_npz"
+)
+
+# Extract K-matrix (camera intrinsics)
+K = prediction.intrinsics[0]  # Shape: (3, 3)
+
+# K-matrix format:
+# [[fx,  0, cx],
+#  [0,  fy, cy],
+#  [0,   0,  1]]
+# where:
+# - fx, fy: focal lengths in pixels
+# - cx, cy: principal point (image center) in pixels
+
+print(f"K-matrix:\n{K}")
+print(f"Focal length X: {K[0, 0]:.2f} pixels")
+print(f"Focal length Y: {K[1, 1]:.2f} pixels")
+print(f"Principal point: ({K[0, 2]:.2f}, {K[1, 2]:.2f}) pixels")
+
+# Save K-matrix to file
+np.savetxt("K.txt", K, fmt="%.6f")
+print("K-matrix saved to K.txt")
+```
+
+#### Method 2: Using CLI with NPZ Export
+
+```bash
+# Process image and export intrinsics
+da3 image path/to/image.jpg \
+    --export-dir ./output \
+    --export-format mini_npz
+
+# Extract K-matrix from NPZ file
+python -c "
+import numpy as np
+data = np.load('./output/exports/mini_npz/results.npz')
+K = data['intrinsics'][0]  # First image's K-matrix
+np.savetxt('K.txt', K, fmt='%.6f')
+print('K-matrix saved to K.txt')
+print(f'K-matrix:\n{K}')
+"
+```
+
+#### Method 3: Using estimate_k_matrix.py Script
+
+If you have the `estimate_k_matrix.py` utility script:
+
+```bash
+# Estimate K-matrix from a single image
+python estimate_k_matrix.py \
+    --image path/to/image.jpg \
+    --output K.txt
+
+# The script will:
+# 1. Load the image
+# 2. Run DA3 inference
+# 3. Extract camera intrinsics
+# 4. Save K-matrix to K.txt
+```
+
+#### Use Cases for K-Matrix
+
+- **3D Reconstruction**: Use K-matrix with depth maps to generate point clouds
+- **SLAM/Tracking**: Provide camera intrinsics for visual SLAM systems (e.g., pysrt3d)
+- **Camera Calibration**: Estimate camera parameters when calibration patterns are unavailable
+- **Multi-View Stereo**: Use intrinsics for pose-conditioned depth estimation
+
+#### Example: Using K-Matrix with pysrt3d
+
+```python
+import numpy as np
+from pysrt3d import Tracker
+
+# Load K-matrix
+K = np.loadtxt("K.txt")
+
+# Get image dimensions
+h, w = 1080, 1920  # Your image height and width
+
+# Initialize tracker with K-matrix
+tracker = Tracker(imwidth=w, imheight=h, K=K)
+
+# Use tracker for SLAM/tracking
+# ...
+```
+
 ---
 
-## 🚀 Advanced Features
+## 🚀 <span id="advanced-features">Advanced Features</span>
 
 ### Metric Depth Estimation
 
