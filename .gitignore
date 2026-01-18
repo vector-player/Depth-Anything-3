@@ -37,3 +37,16 @@ temp*.png
 **/input/**/*.png
 **/output/**/*.png
 **/outputs/**/*.png
+
+# JPG/JPEG files in input and output directories (including subdirectories)
+**/input/**/*.jpg
+**/input/**/*.jpeg
+**/output/**/*.jpg
+**/output/**/*.jpeg
+**/outputs/**/*.jpg
+**/outputs/**/*.jpeg
+
+# GLB files in input and output directories (including subdirectories)
+**/input/**/*.glb
+**/output/**/*.glb
+**/outputs/**/*.glb
